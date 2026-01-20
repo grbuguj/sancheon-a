@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="sancheon"
+        android:label="두근두근 산천어"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

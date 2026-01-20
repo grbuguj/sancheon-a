@@ -42,6 +42,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  flutter_launcher_icons: ^0.13.1
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/icon.png" # 여기에 이미지 경로를 적으세요!
+  adaptive_icon_background: "#FFFFFF" # 안드로이드용 배경색 (필요시)
+  adaptive_icon_foreground: "assets/images/icon.png" # 안드로이드용 앞면
+
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
