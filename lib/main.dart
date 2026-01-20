@@ -164,10 +164,10 @@ class _BattlePageState extends State<BattlePage> {
                       _buildScoreColumn("은지 🐤", eunjiScore, (v) => setState(() => eunjiScore = (eunjiScore + v).clamp(0, 99))),
                     ],
                   ),
-
-                  // 📜 [최종 확정 내기 룰 보드]
+                  // 📜 [최종 확정 내기 룰 보드] - 반응형 수정 버전
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 200, vertical: 20),
+                    // 가로 여백을 200 -> 20으로 대폭 줄여서 핸드폰 화면에 꽉 차게 만듭니다.
+                    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -176,26 +176,28 @@ class _BattlePageState extends State<BattlePage> {
                       boxShadow: [BoxShadow(color: Colors.blueAccent.withOpacity(0.1), blurRadius: 15)],
                     ),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min, // 내용물만큼만 높이 차지
                       children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
                             Text("🏆", style: TextStyle(fontSize: 20)),
                             SizedBox(width: 8),
-                            Text("대결 보상", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            Text("대결 보상", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D3436))),
                             SizedBox(width: 8),
                             Text("🏆", style: TextStyle(fontSize: 20)),
                           ],
                         ),
-                        const SizedBox(height: 20),
-                        _buildRuleRow("3마리", "상대방 안마 시원하게 해주기 💆"),
-                        _buildRuleRow("5마리", "지는사람 오늘 설거지 당첨! 🍽️"),
-                        _buildRuleRow("7마리", "오늘 소원권 1회 (오늘써야함!)"),
-                        _buildRuleRow("최종 승리", "평생 소원권 1회 (거부X) 🎫"),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 15),
+                        // 규칙들을 감싸는 영역
+                        _buildRuleRow("3마리", "상대방 안마 해주기 💆"),
+                        _buildRuleRow("5마리", "오늘 설거지 당첨! 🍽️"),
+                        _buildRuleRow("7마리", "소원권 1회 (오늘 한정)"),
+                        _buildRuleRow("최종승리", "평생 소원권 (거부X) 🎫"),
+                        const Divider(height: 30), // 구분선 추가
                         const Text(
                           "* 주의: 산천어 사기 금지, 정직하게 입력할 것!",
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                          style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
                         )
                       ],
                     ),
@@ -405,7 +407,7 @@ class _CoupleHomeScreenState extends State<CoupleHomeScreen> {
   double _getCharacterPosition() {
     DateTime now = DateTime.now();
     DateTime startTime = DateTime(2026, 1, 25, 0, 0);
-    DateTime endTime = DateTime(2026, 1, 26, 1, 0);
+    DateTime endTime = DateTime(2026, 1, 26, 2, 0);
     if (now.isBefore(startTime)) return 0.0;
     if (now.isAfter(endTime)) return schedules.length - 1.0;
     return (now.difference(startTime).inSeconds / endTime.difference(startTime).inSeconds) * (schedules.length - 1);
@@ -413,6 +415,8 @@ class _CoupleHomeScreenState extends State<CoupleHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 1. 현재 화면의 너비를 측정합니다. (반응형 핵심!)
+    double screenWidth = MediaQuery.of(context).size.width;
     String topCountdown = _getLiveStatus("06:00");
     double charPos = _getCharacterPosition();
 
@@ -428,19 +432,23 @@ class _CoupleHomeScreenState extends State<CoupleHomeScreen> {
                 SliverToBoxAdapter(
                   child: Stack(
                     children: [
+                      // 도로를 그리는 부분
                       CustomPaint(
-                        size: Size(MediaQuery.of(context).size.width, schedules.length * itemHeight),
+                        size: Size(screenWidth, schedules.length * itemHeight),
                         painter: RoadMapPainter(count: schedules.length, itemHeight: itemHeight),
                       ),
+                      // 일정 카드들
                       Column(
                         children: List.generate(schedules.length, (index) {
                           if (schedules[index]['type'] == 'photo') {
                             return _buildPhotoStation(index, schedules[index]);
                           }
-                          return _buildLargeScheduleCard(index, schedules[index]);
+                          // _buildLargeScheduleCard에도 인덱스 짝홀수를 판단해서 넘겨주면 더 좋습니다.
+                          return _buildLargeScheduleCard(index, schedules[index], index % 2 != 0);
                         }),
                       ),
-                      _buildCoupleMarker(charPos),
+                      // ⭐ 자동차 마커: 이제 screenWidth를 함께 보내줍니다!
+                      _buildCoupleMarker(charPos, screenWidth),
                     ],
                   ),
                 ),
@@ -492,106 +500,91 @@ class _CoupleHomeScreenState extends State<CoupleHomeScreen> {
   }
 
   // 💳 가로로 길어진 대형 일정 카드
-  Widget _buildLargeScheduleCard(int index, Map<String, dynamic> data) {
-    bool isRight = index % 2 != 0;
+  // ✅ 인자를 3개(index, data, isRight) 받도록 수정
+  Widget _buildLargeScheduleCard(int index, Map<String, dynamic> data, bool isRight) {
     String status = _getLiveStatus(data['time']);
     double screenWidth = MediaQuery.of(context).size.width;
 
     return Container(
       height: itemHeight,
-      // ✅ 패딩을 줄여서 가로 너비를 확보 (중앙 도로 공간만 살짝 비움)
-      padding: EdgeInsets.only(
-          left: isRight ? screenWidth * 0.35 : 15, // 오른쪽 카드는 왼쪽을 35% 비움
-          right: isRight ? 15 : screenWidth * 0.35, // 왼쪽 카드는 오른쪽을 35% 비움
-          top: 15,
-          bottom: 15
-      ),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 15),
       alignment: isRight ? Alignment.centerRight : Alignment.centerLeft,
       child: GestureDetector(
         onTap: () => _launchMap(data['place']),
-        child: Stack(
-          children: [
-            Container(
-              // ✅ width를 최대한 확보
-              width: 300,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: [
-                  BoxShadow(
-                      color: data['color'].withOpacity(0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8)
-                  )
-                ],
-                border: status.contains("🔥")
-                    ? Border.all(color: Colors.pinkAccent, width: 3)
-                    : null,
-              ),
-              child: Column(
+        child: Container(
+          width: screenWidth * 0.4, // 반응형 너비
+          padding: const EdgeInsets.all(18),
+          height: 200,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(25),
+            boxShadow: [
+              BoxShadow(
+                  color: data['color'].withOpacity(0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8)
+              )
+            ],
+            // 현재 진행 중인 일정은 핑크색 테두리 강조
+            border: status.contains("🔥") ? Border.all(color: Colors.pinkAccent, width: 2.5) : null,
+          ),
+          child: Stack(
+            children: [
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                      data['time'],
-                      style: TextStyle(color: data['color'], fontWeight: FontWeight.bold, fontSize: 16)
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                      data['title'],
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF2D3436))
+                  Text(data['time'], style: TextStyle(color: data['color'], fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 4),
+                  FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(data['title'], style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF2D3436)))
                   ),
                   const SizedBox(height: 4),
-                  // ✅ 설명글도 가로가 넓어져서 보기 편해짐
                   Text(
-                    data['desc'],
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.4),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                      data['desc'],
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600], height: 1.3),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis
                   ),
                   if (status.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                         status,
                         style: TextStyle(
-                            fontSize: 11,
-                            color: status.contains("초") && !status.contains("시간") ? Colors.redAccent : data['color'],
+                            fontSize: 10,
+                            color: status.contains("초") ? Colors.redAccent : data['color'],
                             fontWeight: FontWeight.bold
                         )
                     ),
                   ]
                 ],
               ),
-            ),
-            // 📍 우측 상단 장소 뱃지
-            Positioned(
-              top: 12,
-              right: 15,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: data['color'].withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.location_on, size: 10, color: data['color']),
-                    const SizedBox(width: 4),
-                    Text(
-                      data['place'],
-                      style: const TextStyle(
-                          fontSize: 9,
-                          color: Colors.black87,
-                          fontWeight: FontWeight.bold
+              // 우측 상단 장소 뱃지
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                      color: data['color'].withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8)
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_on, size: 10, color: data['color']),
+                      const SizedBox(width: 4),
+                      Text(
+                          data['place'],
+                          style: const TextStyle(fontSize: 9, color: Colors.black, fontWeight: FontWeight.bold)
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -635,7 +628,7 @@ class _CoupleHomeScreenState extends State<CoupleHomeScreen> {
               ],
             ),
             const SizedBox(height: 15),
-            Text("두근두근 2026 화천 산천어 축제 🐟", style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, shadows: shadows)),
+            Text("두근두근 2026 \n화천 산천어 대축제", style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, shadows: shadows)),
             const SizedBox(height: 5),
             Text("출발까지 $countdown", style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 16, fontWeight: FontWeight.bold, shadows: shadows)),
           ],
@@ -644,23 +637,40 @@ class _CoupleHomeScreenState extends State<CoupleHomeScreen> {
     );
   }
 
-  Widget _buildCoupleMarker(double pos) {
-    double xOffset = MediaQuery.of(context).size.width / 2;
+  Widget _buildCoupleMarker(double pos, double screenWidth) {
+    // 1. 현재 어떤 칸에 있는지 확인
+    int currentIdx = pos.floor();
+    double t = pos - currentIdx; // 한 칸 안에서의 진행도 (0.0 ~ 1.0)
+
+    // 2. 도로의 중심점 계산
+    double centerX = screenWidth / 2;
+    double curveXOffset = (currentIdx % 2 == 0) ? 50 : -50; // Painter와 동일한 굴곡값
+
+    // 3. ⭐ 핵심: 2차 베지에 곡선 공식 (도로와 100% 일치시킴)
+    // 자동차의 가로 위치(x)를 도로 곡선 공식에 대입합니다.
+    double xPos = (1 - t) * (1 - t) * centerX +
+        2 * (1 - t) * t * (centerX + curveXOffset) +
+        t * t * centerX;
+
+    // 4. 세로 위치 계산
     double yOffset = pos * itemHeight + (itemHeight / 2);
-    double xPos = xOffset + (pos % 2 == 0 ? -70 : 70) * sin(pos * pi);
 
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 500),
-      top: yOffset - 30,
-      left: xPos - 35,
+      top: yOffset - 35, // 자동차 아이콘 크기 절반만큼 보정
+      left: xPos - 35,  // 자동차 아이콘 중앙 정렬
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: Colors.pinkAccent, borderRadius: BorderRadius.circular(10), boxShadow: [BoxShadow(color: Colors.pink.withOpacity(0.3), blurRadius: 8)]),
-            child: const Text("은지❤️재웅", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.pinkAccent,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [BoxShadow(color: Colors.pink.withOpacity(0.3), blurRadius: 5)],
+            ),
+            child: const Text("우리 위치", style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
           ),
-          const Icon(Icons.directions_car, color: Colors.blueAccent, size: 35),
+          const Icon(Icons.directions_car, color: Colors.blueAccent, size: 30),
         ],
       ),
     );
@@ -806,7 +816,7 @@ class _CoupleRoomPageState extends State<CoupleRoomPage> with TickerProviderStat
                     borderRadius: BorderRadius.circular(25),
                   ),
                   child: const Text(
-                    "화천에서 산천어 많이 잡고\n맛있는 거 먹으면서 행복한 시간 보내자!\n은지야 운전 조심해! 사랑해❤️",
+                    "화천에서 산천어 많이 잡고\n맛난거 먹으면서 행복한 시간 보내자!\n은지야 운전 조심해! 사랑해❤️",
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Color(0xFF444444), height: 1.8, fontSize: 15),
                   ),
